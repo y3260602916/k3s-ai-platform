@@ -1,0 +1,86 @@
+---
+- name: 安装 Harbor
+  hosts: local
+  become: yes
+  vars:
+    harbor_version: "v2.10.0"
+    harbor_dir: "/root/projects/harbor"
+    harbor_hostname: "47.113.189.149"
+    harbor_port: "8081"
+
+  tasks:
+    - name: 检查 Harbor 是否已安装
+      stat:
+        path: "{{ harbor_dir }}/harbor/docker-compose.yml"
+      register: harbor_installed
+
+    - name: 创建 Harbor 目录
+      file:
+        path: "{{ harbor_dir }}"
+        state: directory
+        mode: '0755'
+      when: not harbor_installed.stat.exists
+
+    - name: 下载 Harbor 安装包
+      get_url:
+        url: "https://ghproxy.net/https://github.com/goharbor/harbor/releases/download/{{ harbor_version }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+        dest: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+      when: not harbor_installed.stat.exists
+
+    - name: 解压 Harbor 安装包
+      unarchive:
+        src: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+        dest: "{{ harbor_dir }}"
+        remote_src: yes
+      when: not harbor_installed.stat.exists
+
+    - name: 生成 HTTPS 证书
+      shell: |
+        mkdir -p certs
+        openssl req -newkey rsa:4096 -nodes -sha256 \
+          -keyout certs/harbor.key -x509 -days 365 \
+          -out certs/harbor.crt -subj "/CN=harbor.local"
+      args:
+        chdir: "{{ harbor_dir }}/harbor"
+        creates: "{{ harbor_dir }}/harbor/certs/harbor.crt"
+      when: not harbor_installed.stat.exists
+
+    - name: 配置 harbor.yml
+      shell: |
+        cp harbor.yml.tmpl harbor.yml
+        sed -i "s/hostname: reg.mydomain.com/hostname: {{ harbor_hostname }}/" harbor.yml
+        sed -i "0,/port: 80/s//port: {{ harbor_port }}/" harbor.yml
+        sed -i 's/^https:/#https:/' harbor.yml
+        sed -i 's/^  port: 443/#  port: 443/' harbor.yml
+        sed -i 's/^  certificate:/#  certificate:/' harbor.yml
+        sed -i 's/^  private_key:/#  private_key:/' harbor.yml
+      args:
+        chdir: "{{ harbor_dir }}/harbor"
+      when: not harbor_installed.stat.exists
+
+    - name: 安装 Harbor
+      shell: ./install.sh
+      args:
+        chdir: "{{ harbor_dir }}/harbor"
+      when: not harbor_installed.stat.exists
+
+    - name: 确保 Harbor 运行
+      shell: docker compose up -d
+      args:
+        chdir: "{{ harbor_dir }}/harbor"
+      register: harbor_up
+
+    - name: 等待 Harbor 端口就绪
+      wait_for:
+        port: "{{ harbor_port }}"
+        host: 127.0.0.1
+        timeout: 60
+
+    - name: 验证 Harbor
+      command: curl -s http://127.0.0.1:{{ harbor_port }}/api/v2.0/health
+      register: harbor_health
+      changed_when: false
+
+    - name: 显示健康状态
+      debug:
+        msg: "{{ harbor_health.stdout }}"

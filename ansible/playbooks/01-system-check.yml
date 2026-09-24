@@ -1,0 +1,28 @@
+---
+- name: 系统环境检查
+  hosts: local
+  gather_facts: yes
+  tasks:
+    - name: 输出系统信息
+      debug:
+        msg:
+          - "操作系统: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "内核: {{ ansible_kernel }}"
+          - "CPU: {{ ansible_processor_vcpus }} 核"
+          - "内存: {{ ansible_memtotal_mb }} MB"
+          - "主机名: {{ ansible_hostname }}"
+          - "IP: {{ ansible_default_ipv4.address }}"
+
+    - name: 检查磁盘使用率
+      shell: df -h / | tail -1 | awk '{print $5}' | sed 's/%//'
+      register: disk_usage
+
+    - name: 磁盘使用率告警
+      debug:
+        msg: "警告：根分区使用率 {{ disk_usage.stdout }}%"
+      when: disk_usage.stdout | int > 80
+
+    - name: 磁盘使用率正常
+      debug:
+        msg: "根分区使用率 {{ disk_usage.stdout }}%，正常"
+      when: disk_usage.stdout | int <= 80

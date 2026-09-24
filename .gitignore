@@ -1,0 +1,9 @@
+*.tgz
+*.tar.gz
+*.crt
+*.key
+certs/
+harbor.yml
+registries.yaml
+daemon.json
+projects/harbor/

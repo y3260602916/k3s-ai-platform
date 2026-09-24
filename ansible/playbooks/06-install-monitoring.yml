@@ -1,0 +1,57 @@
+---
+- name: 安装监控
+  hosts: local
+  become: yes
+  vars:
+    chart_version: "55.5.0"
+    chart_dir: "/root/projects/helm-charts"
+    chart_file: "kube-prometheus-stack-{{ chart_version }}.tgz"
+
+  tasks:
+    - name: 检查 Release 是否已安装
+      command: helm list -n monitoring -q
+      register: helm_list
+      changed_when: false
+      failed_when: false
+
+    - name: 创建 Chart 目录
+      file:
+        path: "{{ chart_dir }}"
+        state: directory
+        mode: '0755'
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 下载 Chart 包
+      get_url:
+        url: "https://ghproxy.net/https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-{{ chart_version }}/{{ chart_file }}"
+        dest: "{{ chart_dir }}/{{ chart_file }}"
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 创建 monitoring 命名空间
+      shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 安装 kube-prometheus-stack
+      shell: |
+        helm install monitoring {{ chart_dir }}/{{ chart_file }} -n monitoring
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 等待监控 Pod 全部就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod --all -n monitoring --timeout=300s
+      when: "'monitoring' not in helm_list.stdout"
+      register: monitoring_wait
+
+    - name: 等待 Prometheus StatefulSet 就绪
+      shell: |
+        kubectl rollout status statefulset/prometheus-monitoring-kube-prometheus-prometheus -n monitoring --timeout=300s
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 等待 Pod 就绪
+      command: kubectl get pods -n monitoring
+      register: monitoring_pods
+      changed_when: false
+
+    - name: 显示 Pod 状态
+      debug:
+        msg: "{{ monitoring_pods.stdout }}"

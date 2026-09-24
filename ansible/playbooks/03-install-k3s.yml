@@ -1,0 +1,81 @@
+---
+- name: 安装 K3s
+  hosts: local
+  become: yes
+  tasks:
+    - name: 检查 K3s 是否已安装
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: 创建 K3s 配置目录
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: 禁用 Traefik
+      copy:
+        dest: /etc/rancher/k3s/config.yaml
+        content: |
+          disable:
+            - traefik
+      notify: restart k3s
+
+    - name: 配置 K3s 镜像源
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        content: |
+          mirrors:
+            docker.io:
+              endpoint:
+                - "https://docker.m.daocloud.io"
+                - "https://dockerproxy.com"
+                - "https://docker.nju.edu.cn"
+            registry.k8s.io:
+              endpoint:
+                - "https://k8s.m.daocloud.io"
+            quay.io:
+              endpoint:
+                - "https://quay.m.daocloud.io"
+                - "https://quay.mirrors.ustc.edu.cn"
+      notify: restart k3s
+
+    - name: 安装 K3s
+      shell: |
+        curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -
+      when: not k3s_binary.stat.exists
+      register: k3s_install
+
+    - name: 等待 K3s 启动
+      wait_for:
+        timeout: 30
+      when: k3s_install.changed
+
+    - name: 验证节点
+      command: kubectl get nodes
+      register: k3s_nodes
+      changed_when: false
+
+    - name: 显示节点
+      debug:
+        msg: "{{ k3s_nodes.stdout }}"
+
+    - name: 创建 .kube 目录
+      file:
+        path: /root/.kube
+        state: directory
+        mode: '0700'
+
+    - name: 复制 kubeconfig
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /root/.kube/config
+        remote_src: yes
+        mode: '0600'
+
+  handlers:
+    - name: restart k3s
+      systemd:
+        name: k3s
+        state: restarted

@@ -1,0 +1,48 @@
+---
+- name: 安装 Ingress-Nginx
+  hosts: local
+  become: yes
+
+  tasks:
+    - name: 检查 Ingress-Nginx 是否已安装
+      command: kubectl get ns ingress-nginx -o name
+      register: ingress_ns
+      changed_when: false
+      failed_when: false
+
+    - name: 安装 Ingress-Nginx
+      shell: |
+        kubectl apply -f https://ghproxy.net/https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+      when: ingress_ns.stdout == ""
+
+    - name: 等待 Controller 就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=controller -n ingress-nginx --timeout=180s
+      when: ingress_ns.stdout == ""
+
+    - name: 等待 Service EXTERNAL-IP 分配
+      shell: |
+        kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' | grep -q .
+      register: ingress_ip
+      until: ingress_ip.rc == 0
+      retries: 20
+      delay: 5
+      when: ingress_ns.stdout == ""
+
+    - name: 查看 Ingress-Nginx Pod
+      command: kubectl get pods -n ingress-nginx
+      register: ingress_pods
+      changed_when: false
+
+    - name: 显示 Pod 状态
+      debug:
+        msg: "{{ ingress_pods.stdout }}"
+
+    - name: 查看 Service
+      command: kubectl get svc -n ingress-nginx
+      register: ingress_svc
+      changed_when: false
+
+    - name: 显示 Service
+      debug:
+        msg: "{{ ingress_svc.stdout }}"

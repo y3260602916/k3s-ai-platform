@@ -1,0 +1,5 @@
+[local]
+localhost ansible_connection=local
+
+[servers]
+# server2 ansible_host=<IP> ansible_user=root

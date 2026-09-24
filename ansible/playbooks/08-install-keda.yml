@@ -1,0 +1,83 @@
+---
+- name: 安装 KEDA
+  hosts: local
+  become: yes
+  vars:
+    keda_version: "2.20.2"
+
+  tasks:
+    - name: 检查 KEDA 是否已安装
+      command: helm list -n keda -q
+      register: keda_list
+      changed_when: false
+      failed_when: false
+
+    - name: 下载 KEDA 镜像
+      command: docker pull ghcr.nju.edu.cn/kedacore/keda:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 下载 KEDA Metrics API Server 镜像
+      command: docker pull ghcr.nju.edu.cn/kedacore/keda-metrics-apiserver:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 下载 KEDA Webhooks 镜像
+      command: docker pull ghcr.nju.edu.cn/kedacore/keda-admission-webhooks:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 KEDA 镜像到 Harbor
+      command: docker tag ghcr.nju.edu.cn/kedacore/keda:{{ keda_version }} 127.0.0.1:8081/library/keda:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 Metrics API Server 镜像到 Harbor
+      command: docker tag ghcr.nju.edu.cn/kedacore/keda-metrics-apiserver:{{ keda_version }} 127.0.0.1:8081/library/keda-metrics-apiserver:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 Webhooks 镜像到 Harbor
+      command: docker tag ghcr.nju.edu.cn/kedacore/keda-admission-webhooks:{{ keda_version }} 127.0.0.1:8081/library/keda-admission-webhooks:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 KEDA 镜像
+      command: docker push 127.0.0.1:8081/library/keda:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 Metrics API Server 镜像
+      command: docker push 127.0.0.1:8081/library/keda-metrics-apiserver:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 推送 Webhooks 镜像
+      command: docker push 127.0.0.1:8081/library/keda-admission-webhooks:{{ keda_version }}
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 添加 KEDA Helm 仓库
+      command: helm repo add kedacore https://kedacore.github.io/charts
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 更新 Helm 仓库
+      command: helm repo update
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 安装 KEDA
+      shell: |
+        helm install keda kedacore/keda -n keda --create-namespace \
+          --version {{ keda_version }} \
+          --set image.keda.registry=127.0.0.1:8081 \
+          --set image.keda.repository=library/keda \
+          --set image.metricsApiServer.registry=127.0.0.1:8081 \
+          --set image.metricsApiServer.repository=library/keda-metrics-apiserver \
+          --set image.webhooks.registry=127.0.0.1:8081 \
+          --set image.webhooks.repository=library/keda-admission-webhooks
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 等待 KEDA 就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod --all -n keda --timeout=180s
+      when: "'keda' not in keda_list.stdout"
+
+    - name: 查看 KEDA Pod
+      command: kubectl get pods -n keda
+      register: keda_pods
+      changed_when: false
+
+    - name: 显示 Pod 状态
+      debug:
+        msg: "{{ keda_pods.stdout }}"

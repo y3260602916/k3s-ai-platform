@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-harbor-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-harbor-test
+  template:
+    metadata:
+      labels:
+        app: nginx-harbor-test
+    spec:
+      containers:
+      - name: nginx
+        image: 47.113.189.149:8081/library/nginx-test:v1
+        ports:
+        - containerPort: 80

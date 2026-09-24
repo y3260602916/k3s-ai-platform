@@ -1,0 +1,49 @@
+---
+- name: 安装 Helm
+  hosts: local
+  become: yes
+  vars:
+    helm_version: "v3.14.4"
+
+  tasks:
+    - name: 检查 Helm 是否已安装
+      stat:
+        path: /usr/local/bin/helm
+      register: helm_binary
+
+    - name: 下载 Helm
+      get_url:
+        url: "https://mirrors.huaweicloud.com/helm/{{ helm_version }}/helm-{{ helm_version }}-linux-amd64.tar.gz"
+        dest: "/tmp/helm-{{ helm_version }}-linux-amd64.tar.gz"
+      when: not helm_binary.stat.exists
+
+    - name: 解压 Helm
+      unarchive:
+        src: "/tmp/helm-{{ helm_version }}-linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: yes
+      when: not helm_binary.stat.exists
+
+    - name: 安装 Helm 二进制
+      copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        remote_src: yes
+        mode: '0755'
+      when: not helm_binary.stat.exists
+
+    - name: 创建 helm 软链接
+      file:
+        src: /usr/local/bin/helm
+        dest: /usr/bin/helm
+        state: link
+        force: yes
+
+    - name: 验证 Helm
+      command: helm version
+      register: helm_version_output
+      changed_when: false
+
+    - name: 显示版本
+      debug:
+        msg: "{{ helm_version_output.stdout }}"

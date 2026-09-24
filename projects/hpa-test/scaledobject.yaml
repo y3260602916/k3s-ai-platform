@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: hpa-demo-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: hpa-demo
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 15
+  cooldownPeriod: 60
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://monitoring-kube-prometheus-prometheus.monitoring.svc:9090
+      metricName: infer_queue_length
+      query: |
+        sum(infer_queue_length{job="hpa-demo"})
+      threshold: "5"
