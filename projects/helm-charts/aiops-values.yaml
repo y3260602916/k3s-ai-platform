@@ -1,0 +1,15 @@
+alertmanager:
+  config:
+    route:
+      receiver: 'null'
+      routes:
+      - match_re:
+          alertname: 'HighCPUUsage|CPUThrottlingHigh'
+        receiver: 'aiops'
+        continue: true
+    receivers:
+    - name: 'null'
+    - name: 'aiops'
+      webhook_configs:
+      - url: 'http://aiops-agent.default.svc:8001/webhook'
+        send_resolved: false

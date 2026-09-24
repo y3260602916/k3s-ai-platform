@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiops-agent
+  template:
+    metadata:
+      labels:
+        app: aiops-agent
+    spec:
+      serviceAccountName: aiops-sa
+      containers:
+      - name: aiops-agent
+        image: 127.0.0.1:8081/library/aiops-agent:v2
+        ports:
+        - containerPort: 8001
+        env:
+        - name: ZHIPU_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aiops-secret
+              key: api-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-agent
+spec:
+  selector:
+    app: aiops-agent
+  ports:
+  - port: 8001
+    targetPort: 8001
