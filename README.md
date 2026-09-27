@@ -42,17 +42,17 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 ## 项目结构
 
 .
-├── ansible/                # Ansible 一键部署
-│   ├── inventory/hosts
-│   └── playbooks/          # 8 个 Playbook + site.yml
-├── scripts/                # Shell 脚本（14 个）
+├── ansible/                          # Ansible 一键部署
+│   ├── inventory/hosts               # 被控机清单
+│   └── playbooks/                    # 8 个 Playbook + site.yml
+├── scripts/                          # Shell 脚本（14 个）
 ├── projects/
-│   ├── aiops-agent/        # AIOps 智能诊断服务
-│   ├── grayscale/          # 灰度发布示例
-│   └── hpa-test/           # HPA + KEDA 扩缩容示例
+│   ├── aiops-agent/                  # AIOps 智能诊断服务
+│   ├── grayscale/                    # 灰度发布示例
+│   └── hpa-test/                     # HPA + KEDA 扩缩容示例
 └── docs/
-    └── troubleshooting.md  # 17 个排错记录
-
+    └── troubleshooting.md            # 17 个排错记录
+    
 ## 快速开始
 
 ```bash
