@@ -40,7 +40,7 @@
 K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HPA、KEDA、RBAC、NetworkPolicy、Ansible、Python、Shell、智谱 GLM
 
 ## 项目结构
-
+```
 .
 ├── ansible/                          # Ansible 一键部署
 │   ├── inventory/hosts               # 被控机清单
@@ -52,7 +52,8 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 │   └── hpa-test/                     # HPA + KEDA 扩缩容示例
 └── docs/
     └── troubleshooting.md            # 17 个排错记录
-    
+```
+
 ## 快速开始
 
 ```bash
@@ -60,5 +61,8 @@ git clone git@github.com:y3260602916/k3s-ai-platform.git
 cd k3s-ai-platform
 vi ansible/inventory/hosts          # 改 IP
 ansible-playbook -i ansible/inventory/hosts ansible/playbooks/site.yml
-排错记录
+```
+
+## 排错记录
+
 开发过程中遇到 17 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 docs/troubleshooting.md。
