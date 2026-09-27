@@ -133,17 +133,113 @@ DevicePlugins 在 K8s 1.10 已 GA，新版本 kubelet 不再接受这个参数�
 
 ---
 
+## 14. AIOps 服务 API Key 编码错误
+
+**现象：** AIOps 服务收到告警后返回 500，日志报 `UnicodeEncodeError: 'ascii' codec can't encode characters`。
+**根因：** K8s Secret 里存的是占位符"你的API_Key"（中文），不是真实的 API Key。HTTP 请求头只能传 ASCII 字符，中文导致编码失败。
+**解决：** 删除旧 Secret，用真实 Key 重建：
+
+```
+kubectl delete secret aiops-secret  
+kubectl create secret generic aiops-secret --from-literal=api-key=<真实Key>  
+kubectl delete pod -l app=aiops-agent
+```
+
+**验证：**
+
+```
+kubectl get secret aiops-secret -o jsonpath='{.data.api-key}' | base64 -d | xxd | head -3
+```
+
+应全是 ASCII 字符（十六进制 20-7e）。
+**关键词：** K8s Secret、ASCII 编码、API Key 管理
+
+---
+
+## 15. Alertmanager 路由不匹配
+
+**现象：** Prometheus 已触发告警，但 Alertmanager 没有转发到 AIOps 服务。
+**根因：** Alertmanager 的路由规则用 `match` 只匹配了 `CPUThrottlingHigh`，而实际触发的告警是 `HighCPUUsage`，不匹配，走了默认的 null receiver。
+**解决：** 改用 `match_re` 正则匹配多个告警名：
+
+```
+routes:
+- receiver: aiops
+  match_re:
+    alertname: HighCPUUsage|CPUThrottlingHigh
+  continue: true
+```
+
+用 Helm upgrade 更新：
+
+```
+helm upgrade monitoring ./kube-prometheus-stack-55.5.0.tgz -n monitoring -f aiops-values.yaml
+kubectl delete pod -n monitoring alertmanager-monitoring-kube-prometheus-alertmanager-0
+```
+
+**验证：**
+
+```
+kubectl get secret -n monitoring alertmanager-monitoring-kube-prometheus-alertmanager-generated -o json | python3 -c "import sys, json, base64, gzip; d=json.load(sys.stdin); [print(gzip.decompress(base64.b64decode(v)).decode()) for k,v in d['data'].items()]"
+```
+
+应看到 `match_re` 配置。
+
+**关键词：** Alertmanager、路由规则、match_re
+
+---
+
+## 16. kubectl exec 不支持 -l 参数
+
+**现象：** `kubectl exec -l app=xxx -- command` 报 `unknown shorthand flag: 'l'`。
+
+**根因：** `kubectl exec` 不支持标签选择器，只支持 Pod 名字。
+
+**解决：** 先用 `kubectl get pods -l` 获取 Pod 名，再 exec：
+
+```
+POD=$(kubectl get pods -l app=aiops-agent -o jsonpath='{.items[0].metadata.name}')
+kubectl exec $POD -- cat /app/app.py
+```
+
+**关键词：** kubectl exec、标签选择器、Pod 名
+
+---
+
+## 17. LLM API 额度耗尽
+
+**现象：** AIOps 服务调用 LLM 返回 `403 - Free quota exhausted`。
+
+**根因：** 通义千问免费额度用完。
+
+**解决：** 切换 LLM 平台（如智谱 GLM），或充值后关闭"仅使用免费额度"模式。
+
+**代码改动：**
+
+```
+client = OpenAI(
+    api_key=os.getenv("ZHIPU_API_KEY"),
+    base_url="https://open.bigmodel.cn/api/paas/v4",
+)
+```
+
+**关键词：** LLM API、额度管理、多平台切换
+
+---
+
 ## 总结
 
-| 类别 | 数量 |
-|------|------|
-| 镜像拉取问题 | 3 |
-| 端口冲突 | 2 |
-| 容器网络 | 2 |
-| 版本不匹配 | 2 |
-| 配置格式 | 1 |
-| 应用依赖 | 1 |
-| K8s 限制 | 2 |
+| 类别       | 数量  |
+| -------- | --- |
+| 镜像拉取问题   | 3   |
+| 端口冲突     | 2   |
+| 容器网络     | 2   |
+| 版本不匹配    | 2   |
+| 配置格式     | 1   |
+| 应用依赖     | 1   |
+| K8s 限制   | 2   |
+| AIOps 部署 | 4   |
+
 
 **排查通用思路：** 先看 Pod 状态 → `describe` 看 Events → `logs` 看容器日志 → 定位根因 → 修复 → 验证。
 
