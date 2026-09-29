@@ -42,6 +42,7 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 
 ## 项目结构
 
+```
 .
 ├── .github/workflows/ # GitHub Actions CI/CD
 │ └── build-aiops.yml
@@ -60,6 +61,7 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 │ └── hpa-test/ # HPA + KEDA 扩缩容示例
 └── docs/
 └── troubleshooting.md # 17 个排错记录
+```
 
 ## 快速开始
 
@@ -88,5 +90,5 @@ Workflow 文件：`.github/workflows/build-aiops.yml`
 
 ## 排错记录
 
-开发过程中遇到 17 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 [docs/troubleshooting.md](https://docs/troubleshooting.md)。
+开发过程中遇到 24 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 [docs/troubleshooting.md](https://docs/troubleshooting.md)。
 
