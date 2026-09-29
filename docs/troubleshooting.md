@@ -227,6 +227,172 @@ client = OpenAI(
 
 ---
 
+## 18. Harbor 离线包下载太慢
+
+**现象：** Ansible 卡在 `下载 Harbor 安装包`，30 秒只下了 351KB，按这个速度要 14 小时。
+**根因：** `ghproxy.net` 虽然能返回 302，但实际下载走的是 `release-assets.githubusercontent.com`，国内速度不稳定。
+**解决：**
+1. 本地用代理下载：
+
+```
+[https://github.com/goharbor/harbor/releases/download/v2.10.0/harbor-offline-installer-v2.10.0.tgz](https://github.com/goharbor/harbor/releases/download/v2.10.0/harbor-offline-installer-v2.10.0.tgz)
+```
+
+1. scp 上传到服务器 `/root/`
+2. 改 Playbook，本地有包就用本地：
+
+```
+- name: 检查本地是否有 Harbor 包
+  stat:
+    path: /root/harbor-offline-installer-{{ harbor_version }}.tgz
+  register: local_harbor
+- name: 复制本地 Harbor 包
+  copy:
+    src: /root/harbor-offline-installer-{{ harbor_version }}.tgz
+    dest: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+  when: local_harbor.stat.exists and not harbor_installed.stat.exists
+- name: 下载 Harbor 安装包
+  get_url:
+    url: "https://ghproxy.net/..."
+    dest: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+  when: not local_harbor.stat.exists and not harbor_installed.stat.exists
+```
+
+**关键词：** GitHub 代理、scp、Ansible 条件判断
+
+---
+
+## 19. Ansible register 语法错误
+
+**现象：** Playbook 报语法错误，报错行是 `register: k3s_instgrep -A25 ...`。
+
+**根因：** 编辑文件时，把另一个命令 `grep -A25 ...` 误粘贴进了 `register:` 后面。
+
+**解决：** 改成 `register: k3s_install`。
+
+**验证：**
+
+```
+ansible-playbook -i inventory/hosts playbooks/03-install-k3s.yml --syntax-check
+```
+
+**关键词：** YAML 语法、register、syntax-check
+
+---
+
+## 20. Ansible wait 执行太早
+
+**现象：** `kubectl wait` 报 `no matching resources found`。
+
+**根因：** 安装 Ingress-Nginx 的 YAML 后，Pod 需要几秒到几十秒才被创建。立刻 `kubectl wait` 时资源还不存在，直接报错。
+
+**解决：** 先轮询等 Pod 出现，再 wait 就绪：
+
+```
+- name: 等待 Controller 就绪
+  shell: |
+    for i in $(seq 1 60); do
+      if kubectl get pod -l app.kubernetes.io/component=controller -n ingress-nginx 2>/dev/null | grep -q Running; then
+        if kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=controller -n ingress-nginx --timeout=10s 2>/dev/null; then
+          echo "Controller 已就绪"
+          exit 0
+        fi
+      fi
+      sleep 5
+    done
+    echo "超时"
+    exit 1
+```
+
+**关键词：** kubectl wait、轮询、幂等
+
+---
+
+## 21. Ansible push 镜像未登录 Harbor
+
+**现象：** `docker push` 报 `push access denied, repository does not exist or may require authorization`。
+
+**根因：** 推送前没执行 `docker login`。
+
+**解决：** 在 push 之前加登录 task：
+
+```
+- name: 登录 Harbor
+  shell: |
+    docker login 127.0.0.1:8081 -u admin -p Harbor12345
+  register: docker_login
+  changed_when: false
+```
+
+**关键词：** docker login、Harbor 认证
+
+---
+
+## 22. docker build 少构建上下文
+
+**现象：** `docker build -t aiops-agent:v3` 报 `requires 1 argument`。
+
+**根因：** `docker build` 需要指定构建上下文路径，末尾的 `.` 表示当前目录。
+
+**解决：**
+
+```
+docker build -t aiops-agent:v3 .
+```
+
+**关键词：** docker build、构建上下文
+
+---
+
+## 23. 根目录误创建文件
+
+**现象：** 在 `~/k3s-ai-platform/` 根目录发现 `Dockerfile` 和 `requirements.txt`，内容是 AIOps 的，但和 `projects/aiops-agent/` 里的不一致（少 `.`、端口错、有拼写错误）。
+
+**根因：** 在错误的目录执行了 `vi` 命令。
+
+**解决：**
+
+```
+rm ~/k3s-ai-platform/Dockerfile ~/k3s-ai-platform/requirements.txt
+```
+
+**教训：** 创建文件前先 `pwd` 确认当前目录。
+
+**关键词：** 工作目录、文件路径
+
+---
+
+## 24. GitHub Actions 不触发
+
+**现象：** 添加 workflow 文件并 push 后，Actions 页面显示 `0 workflow runs`。
+
+**根因：** workflow 里配置了 `paths` 过滤：
+
+```
+on:
+  push:
+    paths:
+      - 'projects/aiops-agent/**'
+```
+
+这次 push 只改了 `.github/workflows/build-aiops.yml`，没有改 `projects/aiops-agent/` 下的文件，不满足触发条件。
+
+**解决：**
+
+方案 A：手动触发。打开 workflow 页面，点 `Run workflow`。
+
+方案 B：把 workflow 文件本身也加到 paths：
+
+```
+    paths:
+      - 'projects/aiops-agent/**'
+      - '.github/workflows/build-aiops.yml'
+```
+
+**关键词：** GitHub Actions、paths 过滤、workflow_dispatch
+
+---
+
 ## 总结
 
 | 类别       | 数量  |
@@ -238,7 +404,7 @@ client = OpenAI(
 | 配置格式     | 1   |
 | 应用依赖     | 1   |
 | K8s 限制   | 2   |
-| AIOps 部署 | 4   |
+| AIOps 部署 | 11   |
 
 
 **排查通用思路：** 先看 Pod 状态 → `describe` 看 Events → `logs` 看容器日志 → 定位根因 → 修复 → 验证。
