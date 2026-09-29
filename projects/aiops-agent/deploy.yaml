@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aiops-agent
@@ -15,7 +15,7 @@ spec:
       serviceAccountName: aiops-sa
       containers:
       - name: aiops-agent
-        image: 127.0.0.1:8081/library/aiops-agent:v2
+        image: 172.28.115.120:8081/library/aiops-agent:v4
         ports:
         - containerPort: 8001
         env:

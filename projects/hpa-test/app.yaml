@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: 47.113.189.149:8081/library/hpa-demo:v3
+        image: 172.28.115.120:8081/library/hpa-demo:v3
         ports:
         - containerPort: 8000
         resources:
