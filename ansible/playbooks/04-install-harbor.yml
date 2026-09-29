@@ -5,7 +5,7 @@
   vars:
     harbor_version: "v2.10.0"
     harbor_dir: "/root/projects/harbor"
-    harbor_hostname: "47.113.189.149"
+    harbor_hostname: "172.28.115.120"
     harbor_port: "8081"
 
   tasks:
@@ -21,12 +21,23 @@
         mode: '0755'
       when: not harbor_installed.stat.exists
 
+    - name: 检查本地是否有 Harbor 包
+      stat:
+        path: /root/harbor-offline-installer-{{ harbor_version }}.tgz
+      register: local_harbor
+
+    - name: 复制本地 Harbor 包
+      copy:
+        src: /root/harbor-offline-installer-{{ harbor_version }}.tgz
+        dest: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
+      when: local_harbor.stat.exists and not harbor_installed.stat.exists
+
     - name: 下载 Harbor 安装包
       get_url:
         url: "https://ghproxy.net/https://github.com/goharbor/harbor/releases/download/{{ harbor_version }}/harbor-offline-installer-{{ harbor_version }}.tgz"
         dest: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"
-      when: not harbor_installed.stat.exists
-
+      when: not local_harbor.stat.exists and not harbor_installed.stat.exists
+    
     - name: 解压 Harbor 安装包
       unarchive:
         src: "{{ harbor_dir }}/harbor-offline-installer-{{ harbor_version }}.tgz"

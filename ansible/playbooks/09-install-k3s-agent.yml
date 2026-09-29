@@ -1,0 +1,66 @@
+---
+- name: 安装 K3s Agent 并加入集群
+  hosts: servers
+  become: yes
+  vars:
+    k3s_master_ip: "172.28.115.120"
+
+  tasks:
+    - name: 检查 K3s 是否已安装
+      stat:
+        path: /usr/local/bin/k3s
+      register: k3s_binary
+
+    - name: 创建 K3s 配置目录
+      file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: 配置 K3s 镜像源
+      copy:
+        dest: /etc/rancher/k3s/registries.yaml
+        content: |
+          mirrors:
+            docker.io:
+              endpoint:
+                - "https://docker.m.daocloud.io"
+                - "https://dockerproxy.com"
+                - "https://docker.nju.edu.cn"
+            registry.k8s.io:
+              endpoint:
+                - "https://k8s.m.daocloud.io"
+            quay.io:
+              endpoint:
+                - "https://quay.m.daocloud.io"
+                - "https://quay.mirrors.ustc.edu.cn"
+            "{{ k3s_master_ip }}:8081":
+              endpoint:
+                - "http://{{ k3s_master_ip }}:8081"
+          configs:
+            "{{ k3s_master_ip }}:8081":
+              tls:
+                insecure_skip_verify: true
+              auth:
+                username: admin
+                password: Harbor12345
+
+    - name: 获取 Master Token
+      shell: cat /var/lib/rancher/k3s/server/node-token
+      delegate_to: localhost
+      register: k3s_token
+      become: yes
+
+    - name: 安装 K3s Agent
+      shell: |
+        curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | \
+          INSTALL_K3S_MIRROR=cn \
+          K3S_URL=https://{{ k3s_master_ip }}:6443 \
+          K3S_TOKEN={{ k3s_token.stdout }} \
+          sh -
+      when: not k3s_binary.stat.exists
+
+    - name: 等待 Agent 启动
+      wait_for:
+        timeout: 30
+      when: not k3s_binary.stat.exists

@@ -17,7 +17,17 @@
 
     - name: 等待 Controller 就绪
       shell: |
-        kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=controller -n ingress-nginx --timeout=180s
+        for i in $(seq 1 60); do
+          if kubectl get pod -l app.kubernetes.io/component=controller -n ingress-nginx 2>/dev/null | grep -q Running; then
+            if kubectl wait --for=condition=Ready pod -l app.kubernetes.io/component=controller -n ingress-nginx --timeout=10s 2>/dev/null; then
+              echo "Controller 已就绪"
+              exit 0
+            fi
+          fi
+          sleep 5
+        done
+        echo "超时"
+        exit 1
       when: ingress_ns.stdout == ""
 
     - name: 等待 Service EXTERNAL-IP 分配

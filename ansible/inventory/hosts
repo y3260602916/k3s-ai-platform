@@ -2,4 +2,4 @@
 localhost ansible_connection=local
 
 [servers]
-# server2 ansible_host=<IP> ansible_user=root
+client1 ansible_host=172.28.115.119 ansible_user=root

@@ -24,6 +24,13 @@
       command: docker pull ghcr.nju.edu.cn/kedacore/keda-admission-webhooks:{{ keda_version }}
       when: "'keda' not in keda_list.stdout"
 
+    - name: 登录 Harbor
+      shell: |
+        docker login 127.0.0.1:8081 -u admin -p Harbor12345
+      when: "'keda' not in keda_list.stdout"
+      register: docker_login
+      changed_when: false
+
     - name: 推送 KEDA 镜像到 Harbor
       command: docker tag ghcr.nju.edu.cn/kedacore/keda:{{ keda_version }} 127.0.0.1:8081/library/keda:{{ keda_version }}
       when: "'keda' not in keda_list.stdout"
