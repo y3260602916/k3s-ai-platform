@@ -131,26 +131,6 @@ ssh-copy-id root@<worker内网IP>
 # 5. 一键部署
 cd ansible
 ansible-playbook -i inventory/hosts playbooks/site.yml
-部署完成后包含
-K3s 双节点集群（1 master + 1 worker）
-
-Harbor 私有镜像仓库
-
-Prometheus + Grafana + Alertmanager 监控
-
-Ingress-Nginx 灰度发布
-
-KEDA 自动扩缩容
-
-MySQL + AIOps 智能诊断服务
-
-hpa-demo 测试服务
-
-验证部署
-bash
-kubectl get nodes
-kubectl get pods -A
-curl http://127.0.0.1:8081/api/v2.0/health    # Harbor
 ```
 ### 部署完成后包含
 - K3s 双节点集群（1 master + 1 worker）
