@@ -26,15 +26,34 @@
 
 ## 架构
 
-用户请求 → Ingress-Nginx → Service → Pod（推理服务）
-↑
-KEDA/HPA ← Prometheus ← 监控指标
-↓
-Alertmanager → AIOps → LLM 诊断
-↓
-MySQL（持久化）
-↑
-Harbor（镜像仓库）
+```mermaid
+graph TB
+    User[用户请求] --> Ingress[Ingress-Nginx<br/>灰度发布]
+    Ingress --> Service[Service]
+    Service --> Pod[Pod<br/>推理服务]
+    
+    Prometheus[Prometheus<br/>指标采集] --> Grafana[Grafana<br/>可视化]
+    Prometheus --> Alertmanager[Alertmanager<br/>告警路由]
+    
+    Alertmanager -->|Webhook| AIOps[AIOps 服务<br/>LLM 诊断]
+    AIOps --> MySQL[(MySQL<br/>报告存储)]
+    AIOps --> GLM[智谱 GLM<br/>根因分析]
+    
+    Pod -->|/metrics| Prometheus
+    Pod -->|镜像拉取| Harbor[Harbor<br/>私有仓库]
+    
+    HPA[HPA/KEDA] -->|扩缩容| Pod
+    Prometheus --> HPA
+    
+    Ansible[Ansible<br/>一键部署] -.-> Pod
+    Ansible -.-> Harbor
+    Ansible -.-> Prometheus
+    
+    style User fill:#e1f5ff
+    style AIOps fill:#fff4e1
+    style MySQL fill:#fff4e1
+    style GLM fill:#fff4e1
+```
 
 ## 技术栈
 
