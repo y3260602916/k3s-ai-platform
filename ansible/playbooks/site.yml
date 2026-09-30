@@ -7,3 +7,5 @@
 - import_playbook: 06-install-monitoring.yml
 - import_playbook: 07-install-ingress-nginx.yml
 - import_playbook: 08-install-keda.yml
+- import_playbook: 09-install-k3s-agent.yml
+- import_playbook: 10-deploy-apps.yml

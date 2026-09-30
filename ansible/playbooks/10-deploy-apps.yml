@@ -1,0 +1,122 @@
+---
+- name: 部署业务应用
+  hosts: local
+  become: yes
+  vars:
+    harbor_ip: "172.26.18.227"
+    harbor_port: "8081"
+    harbor_user: "admin"
+    harbor_password: "Harbor12345"
+    project_dir: "/root/k3s-ai-platform"
+    # LLM API Key 从环境变量读取，不写死在 Playbook 里
+    zhipu_api_key: "{{ lookup('env', 'ZHIPU_API_KEY') }}"
+
+  tasks:
+    - name: 登录 Harbor
+      shell: |
+        docker login {{ harbor_ip }}:{{ harbor_port }} -u {{ harbor_user }} -p {{ harbor_password }}
+      changed_when: false
+
+    - name: 构建 hpa-demo 镜像
+      shell: |
+        cd {{ project_dir }}/projects/hpa-test
+        docker build -t hpa-demo:v3 .
+
+    - name: 推送 hpa-demo 镜像到 Harbor
+      shell: |
+        docker tag hpa-demo:v3 {{ harbor_ip }}:{{ harbor_port }}/library/hpa-demo:v3
+        docker push {{ harbor_ip }}:{{ harbor_port }}/library/hpa-demo:v3
+
+    - name: 构建 aiops-agent 镜像
+      shell: |
+        cd {{ project_dir }}/projects/aiops-agent
+        docker build -t aiops-agent:v6 .
+
+    - name: 推送 aiops-agent 镜像到 Harbor
+      shell: |
+        docker tag aiops-agent:v6 {{ harbor_ip }}:{{ harbor_port }}/library/aiops-agent:v6
+        docker push {{ harbor_ip }}:{{ harbor_port }}/library/aiops-agent:v6
+
+    - name: 创建 ServiceAccount
+      shell: |
+        kubectl create serviceaccount aiops-sa --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: 创建 ClusterRole
+      shell: |
+        kubectl create clusterrole aiops-role \
+          --verb=get,list --resource=pods,pods/log \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: 创建 ClusterRoleBinding
+      shell: |
+        kubectl create clusterrolebinding aiops-binding \
+          --clusterrole=aiops-role \
+          --serviceaccount=default:aiops-sa \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: 检查 Secret 是否存在
+      shell: |
+        kubectl get secret aiops-secret -o name 2>/dev/null || echo "not-exist"
+      register: secret_check
+      changed_when: false
+
+    - name: 创建 Secret
+      shell: |
+        kubectl create secret generic aiops-secret --from-literal=api-key={{ zhipu_api_key }}
+      when: "'not-exist' in secret_check.stdout"
+      no_log: true
+
+    - name: 部署 MySQL
+      shell: |
+        kubectl apply -f {{ project_dir }}/projects/aiops-agent/mysql.yaml
+
+    - name: 等待 MySQL 就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod -l app=mysql --timeout=180s
+
+    - name: 创建 diagnosis_reports 表
+      shell: |
+        MYSQL_POD=$(kubectl get pods -l app=mysql -o jsonpath='{.items[0].metadata.name}')
+        kubectl exec $MYSQL_POD -- mysql -uroot -pAiops123456 aiops -e "
+        CREATE TABLE IF NOT EXISTS diagnosis_reports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          alertname VARCHAR(100),
+          namespace VARCHAR(100),
+          pod VARCHAR(200),
+          description TEXT,
+          diagnosis TEXT,
+          llm_duration FLOAT,
+          total_duration FLOAT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        "
+      when: mysql_deploy.changed
+
+    # ==================== 7. 部署 AIOps ====================
+    - name: 部署 AIOps
+      shell: |
+        kubectl apply -f {{ project_dir }}/projects/aiops-agent/deploy.yaml
+
+    # ==================== 8. 部署 hpa-demo ====================
+    - name: 部署 hpa-demo
+      shell: |
+        kubectl apply -f {{ project_dir }}/projects/hpa-test/app.yaml
+
+    # ==================== 9. 等待所有业务 Pod 就绪 ====================
+    - name: 等待 AIOps 就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod -l app=aiops-agent --timeout=180s
+
+    - name: 等待 hpa-demo 就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod -l app=hpa-demo --timeout=180s
+
+    # ==================== 10. 验证 ====================
+    - name: 查看 Pod 状态
+      command: kubectl get pods
+      register: pods_status
+      changed_when: false
+
+    - name: 显示状态
+      debug:
+        msg: "{{ pods_status.stdout }}"

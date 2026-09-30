@@ -3,7 +3,7 @@
   hosts: servers
   become: yes
   vars:
-    k3s_master_ip: "172.28.115.120"
+    k3s_master_ip: "172.26.18.227"
 
   tasks:
     - name: 检查 K3s 是否已安装

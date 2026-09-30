@@ -15,7 +15,7 @@ spec:
       serviceAccountName: aiops-sa
       containers:
       - name: aiops-agent
-        image: 172.28.115.120:8081/library/aiops-agent:v6
+        image: 172.26.18.227:8081/library/aiops-agent:v6
         ports:
         - containerPort: 8001
         env:
