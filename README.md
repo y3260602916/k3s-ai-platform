@@ -133,26 +133,43 @@ cd ansible
 ansible-playbook -i inventory/hosts playbooks/site.yml
 ```
 ### 部署完成后包含
+
+**基础组件：**
 - K3s 双节点集群（1 master + 1 worker）
-
 - Harbor 私有镜像仓库
-
 - Prometheus + Grafana + Alertmanager 监控
+- Ingress-Nginx
+- KEDA 组件
 
-- Ingress-Nginx 灰度发布
-
-- KEDA 自动扩缩容
-
-- MySQL + AIOps 智能诊断服务
-
+**业务应用：**
+- MySQL + 自动建表
+- AIOps 智能诊断服务
 - hpa-demo 测试服务
+- Prometheus 自定义告警规则
+- 灰度发布示例（v1/v2 + Canary Ingress）
+- ServiceMonitor + KEDA ScaledObject
 
-验证部署
+### 验证部署
 ```
 kubectl get nodes
 kubectl get pods -A
 curl http://127.0.0.1:8081/api/v2.0/health    # Harbor
 ```
+访问 Grafana
+1. 获取 admin 密码
+```
+kubectl get secret -n monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+echo
+```
+2. 本地建立 SSH 隧道
+```
+ssh -L 3000:localhost:3000 root@<master公网IP>
+```
+3. master 上执行 port-forward
+```
+kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
+```
+4. 浏览器访问 http://localhost:3000，用户名 admin，密码用第 1 步获取的。
 
 ## AIOps 智能诊断
 
