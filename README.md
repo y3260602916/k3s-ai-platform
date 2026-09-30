@@ -28,31 +28,44 @@
 
 ```mermaid
 graph TB
-    User[用户请求] --> Ingress[Ingress-Nginx<br/>灰度发布]
-    Ingress --> Service[Service]
-    Service --> Pod[Pod<br/>推理服务]
+    User[用户请求]
     
-    Prometheus[Prometheus<br/>指标采集] --> Grafana[Grafana<br/>可视化]
-    Prometheus --> Alertmanager[Alertmanager<br/>告警路由]
+    subgraph K3s["K3s 双节点集群 (1 master + 1 worker)"]
+        Ingress[Ingress-Nginx<br/>灰度发布]
+        Service[Service]
+        Pod[Pod<br/>推理服务]
+        Prometheus[Prometheus<br/>指标采集]
+        Grafana[Grafana<br/>可视化]
+        Alertmanager[Alertmanager<br/>告警路由]
+        Harbor[Harbor<br/>私有仓库]
+        AIOps[AIOps 服务<br/>LLM 诊断]
+        MySQL[(MySQL<br/>报告存储)]
+        HPA[HPA/KEDA<br/>扩缩容]
+    end
     
-    Alertmanager -->|Webhook| AIOps[AIOps 服务<br/>LLM 诊断]
-    AIOps --> MySQL[(MySQL<br/>报告存储)]
-    AIOps --> GLM[智谱 GLM<br/>根因分析]
+    GLM[智谱 GLM<br/>根因分析]
+    Ansible[Ansible<br/>一键部署]
     
+    User --> Ingress
+    Ingress --> Service
+    Service --> Pod
     Pod -->|/metrics| Prometheus
-    Pod -->|镜像拉取| Harbor[Harbor<br/>私有仓库]
-    
-    HPA[HPA/KEDA] -->|扩缩容| Pod
-    Prometheus --> HPA
-    
-    Ansible[Ansible<br/>一键部署] -.-> Pod
-    Ansible -.-> Harbor
-    Ansible -.-> Prometheus
+    Harbor -->|镜像拉取| Pod
+    Prometheus --> Grafana
+    Prometheus --> Alertmanager
+    Prometheus -->|CPU/队列指标| HPA
+    HPA -->|扩缩容| Pod
+    Alertmanager -->|Webhook| AIOps
+    AIOps --> MySQL
+    AIOps --> GLM
+    Ansible -.->|部署| K3s
     
     style User fill:#e1f5ff
+    style K3s fill:#f9f9f9,stroke:#333
     style AIOps fill:#fff4e1
     style MySQL fill:#fff4e1
     style GLM fill:#fff4e1
+    style Ansible fill:#e8f5e9
 ```
 
 ## 技术栈
