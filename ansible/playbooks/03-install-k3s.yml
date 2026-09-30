@@ -39,16 +39,16 @@
               endpoint:
                 - "https://quay.m.daocloud.io"
                 - "https://quay.mirrors.ustc.edu.cn"
-            "172.28.115.120:8081":
+            "{{ k3s_master_ip }}:{{ harbor_port }}":
               endpoint:
-                - "http://172.28.115.120:8081"
-          configs:
-            "172.28.115.120:8081":
+                - "http://{{ k3s_master_ip }}:{{ harbor_port }}"
+           configs:
+             "{{ k3s_master_ip }}:{{ harbor_port }}":
               tls:
                 insecure_skip_verify: true
               auth:
-                username: admin
-                password: Harbor12345
+                username: "{{ harbor_user }}"
+                password: "{{ harbor_password }}"
       notify: restart k3s
 
     - name: 安装 K3s

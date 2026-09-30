@@ -3,10 +3,7 @@
   hosts: local
   become: yes
   vars:
-    harbor_version: "v2.10.0"
     harbor_dir: "/root/projects/harbor"
-    harbor_hostname: "172.26.18.227"
-    harbor_port: "8081"
 
   tasks:
     - name: 检查 Harbor 是否已安装

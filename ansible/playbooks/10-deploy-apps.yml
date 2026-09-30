@@ -3,18 +3,11 @@
   hosts: local
   become: yes
   vars:
-    harbor_ip: "172.26.18.227"
-    harbor_port: "8081"
-    harbor_user: "admin"
-    harbor_password: "Harbor12345"
-    project_dir: "/root/k3s-ai-platform"
-    # LLM API Key 从环境变量读取，不写死在 Playbook 里
-    zhipu_api_key: "{{ lookup('env', 'ZHIPU_API_KEY') }}"
 
   tasks:
     - name: 登录 Harbor
       shell: |
-        docker login {{ harbor_ip }}:{{ harbor_port }} -u {{ harbor_user }} -p {{ harbor_password }}
+        docker login {{ harbor_hostname }}:{{ harbor_port }} -u {{ harbor_user }} -p {{ harbor_password }}
       changed_when: false
 
     - name: 构建 hpa-demo 镜像
@@ -24,8 +17,8 @@
 
     - name: 推送 hpa-demo 镜像到 Harbor
       shell: |
-        docker tag hpa-demo:v3 {{ harbor_ip }}:{{ harbor_port }}/library/hpa-demo:v3
-        docker push {{ harbor_ip }}:{{ harbor_port }}/library/hpa-demo:v3
+        docker tag hpa-demo:v3 {{ harbor_hostname }}:{{ harbor_port }}/library/hpa-demo:v3
+        docker push {{ harbor_hostname }}:{{ harbor_port }}/library/hpa-demo:v3
 
     - name: 构建 aiops-agent 镜像
       shell: |
@@ -34,8 +27,8 @@
 
     - name: 推送 aiops-agent 镜像到 Harbor
       shell: |
-        docker tag aiops-agent:v6 {{ harbor_ip }}:{{ harbor_port }}/library/aiops-agent:v6
-        docker push {{ harbor_ip }}:{{ harbor_port }}/library/aiops-agent:v6
+        docker tag aiops-agent:v6 {{ harbor_hostname }}:{{ harbor_port }}/library/aiops-agent:v6
+        docker push {{ harbor_hostname }}:{{ harbor_port }}/library/aiops-agent:v6
 
     - name: 创建 ServiceAccount
       shell: |
