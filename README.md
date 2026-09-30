@@ -104,11 +104,74 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 
 ## 快速开始
 
+### 环境要求
+
+- Ubuntu 22.04 / 24.04，2 台服务器（1 master + 1 worker）
+- 每台 4核8G 以上，Docker 预装可选
+- 本地已配置 GitHub SSH 密钥
+
+### 部署步骤
+
 ```
-git clone https://github.com/y3260602916/k3s-ai-platform.git
+# 1. 克隆仓库
+git clone git@github.com:y3260602916/k3s-ai-platform.git
 cd k3s-ai-platform
-vi ansible/inventory/hosts          # 改 IP
-ansible-playbook -i ansible/inventory/hosts ansible/playbooks/site.yml
+
+# 2. 配置 API Key（用于 AIOps）
+bash scripts/setup-env.sh
+
+# 3. 修改集群配置
+vi ansible/group_vars/all.yml       # 改 master/worker 内网 IP
+vi ansible/inventory/hosts          # 改 worker 内网 IP
+
+# 4. 配置 SSH 免密（master → worker）
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+ssh-copy-id root@<worker内网IP>
+
+# 5. 一键部署
+cd ansible
+ansible-playbook -i inventory/hosts playbooks/site.yml
+部署完成后包含
+K3s 双节点集群（1 master + 1 worker）
+
+Harbor 私有镜像仓库
+
+Prometheus + Grafana + Alertmanager 监控
+
+Ingress-Nginx 灰度发布
+
+KEDA 自动扩缩容
+
+MySQL + AIOps 智能诊断服务
+
+hpa-demo 测试服务
+
+验证部署
+bash
+kubectl get nodes
+kubectl get pods -A
+curl http://127.0.0.1:8081/api/v2.0/health    # Harbor
+```
+### 部署完成后包含
+- K3s 双节点集群（1 master + 1 worker）
+
+- Harbor 私有镜像仓库
+
+- Prometheus + Grafana + Alertmanager 监控
+
+- Ingress-Nginx 灰度发布
+
+- KEDA 自动扩缩容
+
+- MySQL + AIOps 智能诊断服务
+
+- hpa-demo 测试服务
+
+验证部署
+```
+kubectl get nodes
+kubectl get pods -A
+curl http://127.0.0.1:8081/api/v2.0/health    # Harbor
 ```
 
 ## AIOps 智能诊断
