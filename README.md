@@ -124,3 +124,17 @@ Workflow 文件：`.github/workflows/build-aiops.yml`
 
 开发过程中遇到 24 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 [docs/troubleshooting.md](https://docs/troubleshooting.md)。
 
+## 项目截图
+
+### AIOps 智能诊断日志
+
+![AIOps 日志](docs/screenshots/aiops-log.png)
+
+### MySQL 诊断报告持久化
+
+![MySQL 数据](docs/screenshots/mysql-data.png)
+
+### 双节点集群运行状态
+
+![集群 Pod](docs/screenshots/cluster-pods.png)
+
