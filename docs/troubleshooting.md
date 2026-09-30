@@ -1,6 +1,12 @@
 # 排错记录
+**环境说明：**
+- 案例 1-13：WSL2 本地环境（Ubuntu 24.04）
+- 案例 14-20：阿里云 ECS 双节点集群
 
-本项目在开发过程中遇到了 13 个真实故障，以下是排查摘要。
+项目前期在 WSL2 本地验证，后期迁移到双节点云服务器。
+**通用排查思路：** 先看 Pod 状态 → `describe` 看 Events → `logs` 看容器日志 → 定位根因 → 修复 → 验证。
+
+本项目在开发过程中遇到了 20 个真实故障，以下是排查摘要。
 
 ---
 
@@ -189,24 +195,7 @@ kubectl get secret -n monitoring alertmanager-monitoring-kube-prometheus-alertma
 
 ---
 
-## 16. kubectl exec 不支持 -l 参数
-
-**现象：** `kubectl exec -l app=xxx -- command` 报 `unknown shorthand flag: 'l'`。
-
-**根因：** `kubectl exec` 不支持标签选择器，只支持 Pod 名字。
-
-**解决：** 先用 `kubectl get pods -l` 获取 Pod 名，再 exec：
-
-```
-POD=$(kubectl get pods -l app=aiops-agent -o jsonpath='{.items[0].metadata.name}')
-kubectl exec $POD -- cat /app/app.py
-```
-
-**关键词：** kubectl exec、标签选择器、Pod 名
-
----
-
-## 17. LLM API 额度耗尽
+## 16. LLM API 额度耗尽
 
 **现象：** AIOps 服务调用 LLM 返回 `403 - Free quota exhausted`。
 
@@ -227,19 +216,17 @@ client = OpenAI(
 
 ---
 
-## 18. Harbor 离线包下载太慢
+## 17. Harbor 离线包下载太慢
 
 **现象：** Ansible 卡在 `下载 Harbor 安装包`，30 秒只下了 351KB，按这个速度要 14 小时。
 **根因：** `ghproxy.net` 虽然能返回 302，但实际下载走的是 `release-assets.githubusercontent.com`，国内速度不稳定。
 **解决：**
 1. 本地用代理下载：
 
-```
-[https://github.com/goharbor/harbor/releases/download/v2.10.0/harbor-offline-installer-v2.10.0.tgz](https://github.com/goharbor/harbor/releases/download/v2.10.0/harbor-offline-installer-v2.10.0.tgz)
-```
+`https://github.com/goharbor/harbor/releases/download/v2.10.0/harbor-offline-installer-v2.10.0.tgz`
 
-1. scp 上传到服务器 `/root/`
-2. 改 Playbook，本地有包就用本地：
+2. scp 上传到服务器 `/root/`
+3. 改 Playbook，本地有包就用本地：
 
 ```
 - name: 检查本地是否有 Harbor 包
@@ -262,25 +249,7 @@ client = OpenAI(
 
 ---
 
-## 19. Ansible register 语法错误
-
-**现象：** Playbook 报语法错误，报错行是 `register: k3s_instgrep -A25 ...`。
-
-**根因：** 编辑文件时，把另一个命令 `grep -A25 ...` 误粘贴进了 `register:` 后面。
-
-**解决：** 改成 `register: k3s_install`。
-
-**验证：**
-
-```
-ansible-playbook -i inventory/hosts playbooks/03-install-k3s.yml --syntax-check
-```
-
-**关键词：** YAML 语法、register、syntax-check
-
----
-
-## 20. Ansible wait 执行太早
+## 18. Ansible wait 执行太早
 
 **现象：** `kubectl wait` 报 `no matching resources found`。
 
@@ -308,7 +277,7 @@ ansible-playbook -i inventory/hosts playbooks/03-install-k3s.yml --syntax-check
 
 ---
 
-## 21. Ansible push 镜像未登录 Harbor
+## 19. Ansible push 镜像未登录 Harbor
 
 **现象：** `docker push` 报 `push access denied, repository does not exist or may require authorization`。
 
@@ -328,41 +297,7 @@ ansible-playbook -i inventory/hosts playbooks/03-install-k3s.yml --syntax-check
 
 ---
 
-## 22. docker build 少构建上下文
-
-**现象：** `docker build -t aiops-agent:v3` 报 `requires 1 argument`。
-
-**根因：** `docker build` 需要指定构建上下文路径，末尾的 `.` 表示当前目录。
-
-**解决：**
-
-```
-docker build -t aiops-agent:v3 .
-```
-
-**关键词：** docker build、构建上下文
-
----
-
-## 23. 根目录误创建文件
-
-**现象：** 在 `~/k3s-ai-platform/` 根目录发现 `Dockerfile` 和 `requirements.txt`，内容是 AIOps 的，但和 `projects/aiops-agent/` 里的不一致（少 `.`、端口错、有拼写错误）。
-
-**根因：** 在错误的目录执行了 `vi` 命令。
-
-**解决：**
-
-```
-rm ~/k3s-ai-platform/Dockerfile ~/k3s-ai-platform/requirements.txt
-```
-
-**教训：** 创建文件前先 `pwd` 确认当前目录。
-
-**关键词：** 工作目录、文件路径
-
----
-
-## 24. GitHub Actions 不触发
+## 20. GitHub Actions 不触发
 
 **现象：** 添加 workflow 文件并 push 后，Actions 页面显示 `0 workflow runs`。
 
@@ -395,17 +330,12 @@ on:
 
 ## 总结
 
-| 类别       | 数量  |
-| -------- | --- |
-| 镜像拉取问题   | 3   |
-| 端口冲突     | 2   |
-| 容器网络     | 2   |
-| 版本不匹配    | 2   |
-| 配置格式     | 1   |
-| 应用依赖     | 1   |
-| K8s 限制   | 2   |
-| AIOps 部署 | 11   |
-
-
-**排查通用思路：** 先看 Pod 状态 → `describe` 看 Events → `logs` 看容器日志 → 定位根因 → 修复 → 验证。
-
+| 类别 | 数量 |
+|------|------|
+| 镜像与仓库 | 4 |
+| 网络与端口 | 3 |
+| K8s 配置与限制 | 3 |
+| 弹性伸缩与监控 | 4 |
+| AIOps 应用 | 3 |
+| 自动化与 Ansible | 3 |
+| **合计** | **20** |
