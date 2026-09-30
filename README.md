@@ -146,13 +146,12 @@ Workflow 文件：`.github/workflows/build-aiops.yml`
 
 ### 双节点集群运行状态
 
-1 master + 1 worker，所有组件运行正常。
+1 master（control-plane）+ 1 worker，K3s 集群正常，所有组件运行正常。
 
-![集群 Pod](docs/screenshots/cluster-pods.png)
+![集群节点](docs/screenshots/cluster-nodes.png)
 
 ### GitHub Actions CI/CD
 
 代码提交自动构建镜像并推送到 ghcr.io，所有步骤通过。
 
 ![Actions](docs/screenshots/github-actions.png)
-
