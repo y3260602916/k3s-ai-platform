@@ -94,7 +94,8 @@ def call_llm(context):
         messages=[
             {"role": "system", "content": "你是SRE，分析K8s告警，给出根因和排查建议，简洁。"},
             {"role": "user", "content": f"请分析以下告警：\n\n{context}"}
-        ]
+        ],
+        timeout=60
     )
     duration = time.time() - start
     print(f"[LLM 耗时] {duration:.2f} 秒", flush=True)
