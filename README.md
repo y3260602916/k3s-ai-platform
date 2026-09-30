@@ -5,14 +5,14 @@
 ## 项目背景
 
 学习性质的云原生 AI 推理平台部署实践。模拟 AI 公司推理服务的运维场景：镜像管理、监控告警、灰度发布、自动扩缩容、安全加固、智能诊断。
-**不是真实生产环境**，双节点部署（1 master + 1 worker），无真实流量。但尽量模拟了生产中的关键问题，记录了 17 个真实排错案例。
+**不是真实生产环境**，双节点部署（1 master + 1 worker），无真实流量。但尽量模拟了生产中的关键问题，记录了 20 个真实排错案例。
 
 ## 已实现
 
 - K3s 双节点集群搭建，配置镜像加速和私有仓库
 - Harbor 私有镜像仓库，镜像推送与拉取
 - Prometheus + Grafana 监控集群和应用指标
-- Ingress-Nginx Canary 灰度发布，秒级切流回滚
+- Ingress-Nginx Canary 灰度发布，支持切流回滚
 - HPA + KEDA 自动扩缩容（CPU / 队列长度）
 - RBAC + NetworkPolicy 安全加固
 - AIOps 智能诊断：告警自动触发 LLM 分析并输出根因，诊断报告持久化到 MySQL，提供 API 查询历史记录
@@ -70,7 +70,7 @@ graph TB
 
 ## 技术栈
 
-K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HPA、KEDA、RBAC、NetworkPolicy、Ansible、Python、Shell、MySQL、智谱 GLM、GitHub Actions
+K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HPA、KEDA、RBAC、NetworkPolicy、Ansible、Python、Shell、MySQL、GitHub Actions
 
 ## 项目结构
 
@@ -92,7 +92,7 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 │ ├── grayscale/ # 灰度发布示例
 │ └── hpa-test/ # HPA + KEDA 扩缩容示例
 └── docs/
-└── troubleshooting.md # 17 个排错记录
+└── troubleshooting.md # 20 个排错记录
 ```
 
 ## 快速开始
@@ -108,7 +108,7 @@ ansible-playbook -i ansible/inventory/hosts ansible/playbooks/site.yml
 
 告警触发 → Alertmanager Webhook → AIOps 服务 → 拉取 Pod 日志 → 调用 GLM 分析根因 → 输出排查建议 → 存储到 MySQL。
 
-**实测数据：** 单次诊断平均耗时 25 秒，成功率 100%。
+**实测数据：** 14 次模拟告警中 13 次成功返回诊断结果，1 次因超时降级，成功诊断平均耗时约 20 秒。
 
 ## CI/CD
 
@@ -122,7 +122,7 @@ Workflow 文件：`.github/workflows/build-aiops.yml`
 
 ## 排错记录
 
-开发过程中遇到 24 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 [docs/troubleshooting.md](https://docs/troubleshooting.md)。
+开发过程中遇到 20 个真实故障，涵盖镜像拉取、端口冲突、容器网络、版本不匹配、AIOps 部署等。详见 [docs/troubleshooting.md](docs/troubleshooting.md)。
 
 ## 项目截图
 
