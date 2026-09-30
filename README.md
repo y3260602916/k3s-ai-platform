@@ -128,13 +128,31 @@ Workflow 文件：`.github/workflows/build-aiops.yml`
 
 ### AIOps 智能诊断日志
 
+告警触发后自动采集 Pod 日志，调用 GLM 分析根因，诊断结果持久化到 MySQL。
+
 ![AIOps 日志](docs/screenshots/aiops-log.png)
 
 ### MySQL 诊断报告持久化
 
+14 条诊断记录，包含 LLM 耗时、总耗时、创建时间。
+
 ![MySQL 数据](docs/screenshots/mysql-data.png)
+
+### Grafana 集群监控
+
+集群 CPU、内存利用率，各命名空间资源占比。
+
+![Grafana](docs/screenshots/grafana-compute.png)
 
 ### 双节点集群运行状态
 
+1 master + 1 worker，所有组件运行正常。
+
 ![集群 Pod](docs/screenshots/cluster-pods.png)
+
+### GitHub Actions CI/CD
+
+代码提交自动构建镜像并推送到 ghcr.io，所有步骤通过。
+
+![Actions](docs/screenshots/github-actions.png)
 
