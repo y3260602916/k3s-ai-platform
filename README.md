@@ -30,17 +30,20 @@
 graph TB
     User[用户请求]
     
-    subgraph K3s["K3s 双节点集群 (1 master + 1 worker)"]
-        Ingress[Ingress-Nginx<br/>灰度发布]
-        Service[Service]
-        Pod[Pod<br/>推理服务]
-        Prometheus[Prometheus<br/>指标采集]
-        Grafana[Grafana<br/>可视化]
-        Alertmanager[Alertmanager<br/>告警路由]
-        Harbor[Harbor<br/>私有仓库]
-        AIOps[AIOps 服务<br/>LLM 诊断]
-        MySQL[(MySQL<br/>报告存储)]
-        HPA[HPA/KEDA<br/>扩缩容]
+    subgraph 宿主机["宿主机"]
+        Harbor[Harbor<br/>Docker Compose<br/>私有仓库]
+        
+        subgraph K3s["K3s 双节点集群 (1 master + 1 worker)"]
+            Ingress[Ingress-Nginx<br/>灰度发布]
+            Service[Service]
+            Pod[Pod<br/>推理服务]
+            Prometheus[Prometheus<br/>指标采集]
+            Grafana[Grafana<br/>可视化]
+            Alertmanager[Alertmanager<br/>告警路由]
+            AIOps[AIOps 服务<br/>LLM 诊断]
+            MySQL[(MySQL<br/>报告存储)]
+            HPA[HPA/KEDA<br/>扩缩容]
+        end
     end
     
     GLM[智谱 GLM<br/>根因分析]
@@ -61,6 +64,7 @@ graph TB
     Ansible -.->|部署| K3s
     
     style User fill:#e1f5ff
+    style 宿主机 fill:#f0f0f0,stroke:#999
     style K3s fill:#f9f9f9,stroke:#333
     style AIOps fill:#fff4e1
     style MySQL fill:#fff4e1
@@ -76,29 +80,32 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 
 ```
 .
-├── .github/workflows/ # GitHub Actions CI/CD
-│ └── build-aiops.yml
-├── ansible/ # Ansible 一键部署
-│ ├── inventory/hosts # 被控机清单
-│ └── playbooks/ # 9 个 Playbook + site.yml
-├── scripts/ # Shell 脚本（15 个）
+├── .github/
+│   └── workflows/
+│       └── build-aiops.yml
+├── ansible/
+│   ├── inventory/
+│   │   └── hosts
+│   └── playbooks/
+│       └── site.yml
+├── scripts/
 ├── projects/
-│ ├── aiops-agent/ # AIOps 智能诊断服务
-│ │ ├── app.py
-│ │ ├── mysql.yaml # MySQL 部署
-│ │ ├── deploy.yaml
-│ │ ├── Dockerfile
-│ │ └── requirements.txt
-│ ├── grayscale/ # 灰度发布示例
-│ └── hpa-test/ # HPA + KEDA 扩缩容示例
+│   ├── aiops-agent/
+│   │   ├── app.py
+│   │   ├── mysql.yaml
+│   │   ├── deploy.yaml
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   ├── grayscale/
+│   └── hpa-test/
 └── docs/
-└── troubleshooting.md # 20 个排错记录
+    └── troubleshooting.md
 ```
 
 ## 快速开始
 
 ```
-git clone git@github.com:y3260602916/k3s-ai-platform.git
+git clone https://github.com/y3260602916/k3s-ai-platform.git
 cd k3s-ai-platform
 vi ansible/inventory/hosts          # 改 IP
 ansible-playbook -i ansible/inventory/hosts ansible/playbooks/site.yml
