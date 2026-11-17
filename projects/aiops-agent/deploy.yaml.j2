@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiops-agent
+  template:
+    metadata:
+      labels:
+        app: aiops-agent
+    spec:
+      serviceAccountName: aiops-sa
+      containers:
+      - name: aiops-agent
+        image: "{{ harbor_hostname }}:{{ harbor_port }}/library/aiops-agent:v6"
+        ports:
+        - containerPort: 8001
+        env:
+        # 切换厂商：Key 由 aiops-secret 提供，地址和模型取自 all.yml 的 llm_* 变量
+        - name: LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aiops-secret
+              key: api-key
+        - name: LLM_BASE_URL
+          value: "{{ llm_base_url }}"
+        - name: LLM_MODEL
+          value: "{{ llm_model }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiops-agent
+spec:
+  selector:
+    app: aiops-agent
+  ports:
+  - port: 8001
+    targetPort: 8001

@@ -14,6 +14,10 @@ harbor_version: "v2.10.0"
 harbor_user: "admin"
 harbor_password: "Harbor12345"
 
+# LLM 配置（优先读 setup-env.sh 写入的环境变量，未设置时回退智谱）
+llm_base_url: "{{ lookup('env', 'LLM_BASE_URL') or 'https://open.bigmodel.cn/api/paas/v4' }}"
+llm_model: "{{ lookup('env', 'LLM_MODEL') or 'glm-4-flash' }}"
+
 # 版本
 k3s_version: "v1.36.4"
 helm_version: "v3.14.4"

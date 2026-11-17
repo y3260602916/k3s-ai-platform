@@ -42,8 +42,8 @@
             "{{ k3s_master_ip }}:{{ harbor_port }}":
               endpoint:
                 - "http://{{ k3s_master_ip }}:{{ harbor_port }}"
-           configs:
-             "{{ k3s_master_ip }}:{{ harbor_port }}":
+          configs:
+            "{{ k3s_master_ip }}:{{ harbor_port }}":
               tls:
                 insecure_skip_verify: true
               auth:

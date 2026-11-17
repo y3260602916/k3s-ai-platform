@@ -93,7 +93,7 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 │   ├── aiops-agent/
 │   │   ├── app.py
 │   │   ├── mysql.yaml
-│   │   ├── deploy.yaml
+│   │   ├── deploy.yaml.j2
 │   │   ├── Dockerfile
 │   │   └── requirements.txt
 │   ├── grayscale/
@@ -117,12 +117,13 @@ K3s、Docker、Harbor、Prometheus、Grafana、Alertmanager、Ingress-Nginx、HP
 git clone git@github.com:y3260602916/k3s-ai-platform.git
 cd k3s-ai-platform
 
-# 2. 配置 API Key（用于 AIOps）
+# 2. 配置 API Key（写入 ~/.bashrc，不会进入仓库）
 bash scripts/setup-env.sh
+source ~/.bashrc
 
 # 3. 修改集群配置
-vi ansible/group_vars/all.yml       # 改 master/worker 内网 IP
-vi ansible/inventory/hosts          # 改 worker 内网 IP
+vi ansible/inventory/group_vars/all.yml   # 改 master/worker 内网 IP
+vi ansible/inventory/hosts                # 改 worker 内网 IP
 
 # 4. 配置 SSH 免密（master → worker）
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519

@@ -18,10 +18,12 @@ except Exception:
 
 v1 = client.CoreV1Api()
 
-# LLM客户端
+# LLM客户端（OpenAI 兼容接口，切换厂商只需改环境变量）
+LLM_MODEL = os.getenv("LLM_MODEL", "glm-4-flash")
+
 client = OpenAI(
-    api_key=os.getenv("ZHIPU_API_KEY"),
-    base_url="https://open.bigmodel.cn/api/paas/v4",
+    api_key=os.getenv("LLM_API_KEY") or os.getenv("ZHIPU_API_KEY"),
+    base_url=os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
 )
 
 DB_CONFIG = {
@@ -90,7 +92,7 @@ def list_reports():
 def call_llm(context):
     start = time.time()
     response = client.chat.completions.create(
-        model="glm-4-flash",
+        model=LLM_MODEL,
         messages=[
             {"role": "system", "content": "你是SRE，分析K8s告警，给出根因和排查建议，简洁。"},
             {"role": "user", "content": f"请分析以下告警：\n\n{context}"}
