@@ -9,7 +9,7 @@
 
   tasks:
     - name: 检查 Release 是否已安装
-      command: helm list -n monitoring -q
+      command: helm list -n monitoring -q --deployed
       register: helm_list
       changed_when: false
       failed_when: false
@@ -21,14 +21,43 @@
         mode: '0755'
       when: "'monitoring' not in helm_list.stdout"
 
-    - name: 下载 Chart 包
-      get_url:
-        url: "https://ghproxy.net/https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-{{ chart_version }}/{{ chart_file }}"
-        dest: "{{ chart_dir }}/{{ chart_file }}"
+    - name: 检查 Chart 包是否已存在
+      stat:
+        path: "{{ chart_dir }}/{{ chart_file }}"
+      register: chart_stat
       when: "'monitoring' not in helm_list.stdout"
+
+    - name: 添加 prometheus-community 仓库
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      register: repo_add
+      changed_when: "'already exists' not in repo_add.stdout"
+      failed_when: repo_add.rc != 0 and 'already exists' not in repo_add.stdout
+      when:
+        - "'monitoring' not in helm_list.stdout"
+        - not (chart_stat.stat.exists | default(false))
+
+    - name: 更新 Helm 仓库
+      command: helm repo update
+      changed_when: false
+      when:
+        - "'monitoring' not in helm_list.stdout"
+        - not (chart_stat.stat.exists | default(false))
+
+    - name: 下载 Chart 包
+      command: helm pull prometheus-community/kube-prometheus-stack --version {{ chart_version }} -d {{ chart_dir }}
+      when:
+        - "'monitoring' not in helm_list.stdout"
+        - not (chart_stat.stat.exists | default(false))
 
     - name: 创建 monitoring 命名空间
       shell: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+      when: "'monitoring' not in helm_list.stdout"
+
+    - name: 清理未完成的 Release
+      shell: |
+        if helm status monitoring -n monitoring >/dev/null 2>&1; then
+          helm uninstall monitoring -n monitoring
+        fi
       when: "'monitoring' not in helm_list.stdout"
 
     - name: 安装 kube-prometheus-stack
@@ -36,16 +65,16 @@
         helm install monitoring {{ chart_dir }}/{{ chart_file }} -n monitoring
       when: "'monitoring' not in helm_list.stdout"
 
-    - name: 等待监控 Pod 全部就绪
-      shell: |
-        kubectl wait --for=condition=Ready pod --all -n monitoring --timeout=300s
-      when: "'monitoring' not in helm_list.stdout"
-      register: monitoring_wait
-
     - name: 等待 Prometheus StatefulSet 就绪
       shell: |
-        kubectl rollout status statefulset/prometheus-monitoring-kube-prometheus-prometheus -n monitoring --timeout=300s
+        kubectl rollout status statefulset/prometheus-monitoring-kube-prometheus-prometheus -n monitoring --timeout=900s
       when: "'monitoring' not in helm_list.stdout"
+
+    - name: 等待监控 Pod 全部就绪
+      shell: |
+        kubectl wait --for=condition=Ready pod --all -n monitoring --timeout=600s
+      when: "'monitoring' not in helm_list.stdout"
+      register: monitoring_wait
 
     - name: 等待 Pod 就绪
       command: kubectl get pods -n monitoring

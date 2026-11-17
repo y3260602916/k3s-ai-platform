@@ -33,16 +33,16 @@
               endpoint:
                 - "https://quay.m.daocloud.io"
                 - "https://quay.mirrors.ustc.edu.cn"
-            "{{ k3s_master_ip }}:8081":
+            "{{ k3s_master_ip }}:{{ harbor_port }}":
               endpoint:
-                - "http://{{ k3s_master_ip }}:8081"
+                - "http://{{ k3s_master_ip }}:{{ harbor_port }}"
           configs:
-            "{{ k3s_master_ip }}:8081":
+            "{{ k3s_master_ip }}:{{ harbor_port }}":
               tls:
                 insecure_skip_verify: true
               auth:
-                username: admin
-                password: Harbor12345
+                username: "{{ harbor_user }}"
+                password: "{{ harbor_password }}"
 
     - name: 获取 Master Token
       shell: cat /var/lib/rancher/k3s/server/node-token
